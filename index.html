@@ -43,6 +43,19 @@
 
     <!-- TAB 1: JUEGO -->
     <div id="tabJuego" class="tab-content">
+
+      <!-- Compra de cartrons (abans de partida) -->
+      <div id="pantallaCompra" class="oculto">
+        <h2>Compra de cartrons</h2>
+        <p class="compra-info">Preu per cartr&oacute;: <strong id="compraPreuCartro">5</strong> monedes</p>
+        <div id="compraJugadors"></div>
+        <div class="compra-pot">
+          Pot total: <strong id="compraPot">0</strong> monedes
+          <span class="compra-detall">(L&iacute;nia: <span id="compraPotLinea">0</span> | Bingo: <span id="compraPotBingo">0</span>)</span>
+        </div>
+        <button id="btnCompraOk" class="btn btn-grande btn-primary">Comencem!</button>
+      </div>
+
       <!-- Número actual -->
       <div id="zonaNumero">
         <div id="bolaActual">
@@ -83,12 +96,17 @@
     <!-- TAB 2: CLASIFICACIÓN -->
     <div id="tabClasificacion" class="tab-content oculto">
       <h2>Clasificaci&oacute;n</h2>
+      <div class="clasificacion-orden">
+        <button id="btnOrdenSaldo" class="btn btn-small btn-primary">Saldo</button>
+        <button id="btnOrdenPuntos" class="btn btn-small btn-secondary">Puntos</button>
+      </div>
       <table id="tablaClasificacion">
         <thead>
           <tr>
             <th>#</th>
             <th>Jugador</th>
             <th>Pts</th>
+            <th>Saldo</th>
             <th>L</th>
             <th>B</th>
           </tr>
@@ -110,6 +128,28 @@
       </div>
 
       <div class="config-grupo">
+        <label>Descans cada</label>
+        <select id="selectDescans">
+          <option value="0">Desactivat</option>
+          <option value="10">10 boles</option>
+          <option value="15" selected>15 boles</option>
+          <option value="20">20 boles</option>
+          <option value="30">30 boles</option>
+        </select>
+      </div>
+
+      <div class="config-grupo">
+        <label>Durada mescla</label>
+        <select id="selectDescansDurada">
+          <option value="2">2 segons</option>
+          <option value="3" selected>3 segons</option>
+          <option value="4">4 segons</option>
+          <option value="5">5 segons</option>
+          <option value="7">7 segons</option>
+        </select>
+      </div>
+
+      <div class="config-grupo">
         <label>Velocidad</label>
         <select id="selectVelocidad">
           <option value="3000">Muy lento</option>
@@ -120,31 +160,62 @@
         </select>
       </div>
 
-      <div class="config-grupo oculto">
+      <div class="config-grupo">
         <label>Tonter&iacute;as</label>
         <select id="selectTonterias">
-          <option value="sin" selected>Sin tonter&iacute;as</option>
-          <option value="alguna">Alguna tonter&iacute;a</option>
-          <option value="muchas">Muchas tonter&iacute;as</option>
+          <option value="sin" selected>No</option>
+          <option value="si">S&iacute;</option>
         </select>
       </div>
 
       <div class="config-grupo">
         <label>Pts L&iacute;nea</label>
         <div class="config-puntos">
-          <button class="btn btn-small" data-puntos="linea" data-dir="-1">-</button>
+          <button class="btn btn-small" data-config="puntosLinea" data-dir="-1">-</button>
           <span id="puntosLineaVal">1</span>
-          <button class="btn btn-small" data-puntos="linea" data-dir="1">+</button>
+          <button class="btn btn-small" data-config="puntosLinea" data-dir="1">+</button>
         </div>
       </div>
 
       <div class="config-grupo">
         <label>Pts Bingo</label>
         <div class="config-puntos">
-          <button class="btn btn-small" data-puntos="bingo" data-dir="-1">-</button>
+          <button class="btn btn-small" data-config="puntosBingo" data-dir="-1">-</button>
           <span id="puntosBingoVal">3</span>
-          <button class="btn btn-small" data-puntos="bingo" data-dir="1">+</button>
+          <button class="btn btn-small" data-config="puntosBingo" data-dir="1">+</button>
         </div>
+      </div>
+
+      <div class="config-grupo">
+        <label>Saldo inicial</label>
+        <div class="config-puntos">
+          <button class="btn btn-small" data-config="saldoInicial" data-dir="-10">-</button>
+          <span id="saldoInicialVal">100</span>
+          <button class="btn btn-small" data-config="saldoInicial" data-dir="10">+</button>
+        </div>
+      </div>
+
+      <div class="config-grupo">
+        <label>Preu cartr&oacute;</label>
+        <div class="config-puntos">
+          <button class="btn btn-small" data-config="preuCartro" data-dir="-1">-</button>
+          <span id="preuCartroVal">5</span>
+          <button class="btn btn-small" data-config="preuCartro" data-dir="1">+</button>
+        </div>
+      </div>
+
+      <div class="config-grupo">
+        <label>% L&iacute;nia</label>
+        <div class="config-puntos">
+          <button class="btn btn-small" data-config="pctLinea" data-dir="-5">-</button>
+          <span id="pctLineaVal">30%</span>
+          <button class="btn btn-small" data-config="pctLinea" data-dir="5">+</button>
+        </div>
+      </div>
+
+      <div class="config-grupo">
+        <label>% Bingo</label>
+        <span id="pctBingoVal">70%</span>
       </div>
 
       <div class="config-grupo config-grupo-vertical">

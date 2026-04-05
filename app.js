@@ -12,8 +12,21 @@ const VOCES_GRABADAS = [
   // { id: 'voz5', nombre: 'Nombre' },
 ];
 
-// Tonterías: archivos audio/tonterias/1.mp3, 2.mp3, etc.
-const NUM_TONTERIAS = 0; // Cambiar al número de archivos de tonterías disponibles
+// --- Tonterías ---
+// Per afegir/treure tonterías, modifica aquestes llistes:
+const TONTERIAS = {
+  // Sonen just després del número corresponent (sempre)
+  numeros: [22, 26, 44, 57, 61, 85, 90],
+
+  // Sonen 1 cop per partida, en moments aleatoris
+  aleatorios_1_vez: ['callate', 'me_aburro', 'mima_va_que_me_aburro', 'pedo'],
+
+  // Sonen 2 cops per partida, en moments aleatoris
+  aleatorio_2_veces: ['miguel_callate'],
+
+  // Sonen 2 cops per partida, només quan la unitat del número coincideix
+  unidades: [5, 8]
+};
 
 const VELOCIDADES = {
   3000: 'Muy lento',
@@ -21,12 +34,6 @@ const VELOCIDADES = {
   1200: 'Normal',
   800: 'Rápida',
   500: 'Turbo'
-};
-
-const PROB_TONTERIAS = {
-  sin: 0,
-  alguna: 0.15,
-  muchas: 0.40
 };
 
 // --- Estado ---
@@ -39,8 +46,17 @@ let state = {
   voz: 'default',
   velocidad: 1200,
   tonterias: 'sin',
+  // Descans
+  descansEach: 15,     // cada X boles (0 = desactivat)
+  descansDurada: 3,    // segons de mescla
+  // Punts
   puntosLinea: 1,
   puntosBingo: 3,
+  // Sistema de monedes
+  saldoInicial: 100,
+  preuCartro: 5,
+  pctLinea: 30,       // % del pot per línia
+  potActual: 0,       // pot de la partida en curs
   jugadores: [],
   partidaEnCurso: false,
   tema: null
@@ -90,7 +106,22 @@ const els = {
   barraVerificacion: $('barraVerificacion'),
   verificacionTexto: $('verificacionTexto'),
   btnVerificacionOk: $('btnVerificacionOk'),
-  btnVerificacionCancel: $('btnVerificacionCancel')
+  btnVerificacionCancel: $('btnVerificacionCancel'),
+  pantallaCompra: $('pantallaCompra'),
+  compraPreuCartro: $('compraPreuCartro'),
+  compraJugadors: $('compraJugadors'),
+  compraPot: $('compraPot'),
+  compraPotLinea: $('compraPotLinea'),
+  compraPotBingo: $('compraPotBingo'),
+  btnCompraOk: $('btnCompraOk'),
+  puntosLineaVal: $('puntosLineaVal'),
+  puntosBingoVal: $('puntosBingoVal'),
+  saldoInicialVal: $('saldoInicialVal'),
+  preuCartroVal: $('preuCartroVal'),
+  pctLineaVal: $('pctLineaVal'),
+  pctBingoVal: $('pctBingoVal'),
+  selectDescans: $('selectDescans'),
+  selectDescansDurada: $('selectDescansDurada')
 };
 
 // --- LocalStorage ---
@@ -258,15 +289,156 @@ function hablarBingo() {
   });
 }
 
-function reproducirTonteria() {
+function reproducirDescans() {
   return new Promise(resolve => {
-    if (NUM_TONTERIAS === 0) { resolve(); return; }
-    const n = Math.floor(Math.random() * NUM_TONTERIAS) + 1;
-    const audio = new Audio(`audio/tonterias/${n}.mp3`);
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const duration = state.descansDurada;
+    const sr = ctx.sampleRate;
+    const len = Math.floor(sr * duration);
+    const buffer = ctx.createBuffer(1, len, sr);
+    const data = buffer.getChannelData(0);
+
+    // Pre-generar events de xoc (boles de plàstic dins caixa de fusta)
+    const xocs = [];
+    let t = 0.05;
+    while (t < duration - 0.3) {
+      // Densitat variable: accelera i frena com si giressin el bombo
+      const velocitat = 0.6 + 0.4 * Math.sin(t * Math.PI * 2 / duration * 3);
+      const gap = (0.01 + Math.random() * 0.06) / velocitat;
+      xocs.push({
+        t: t,
+        pitch: 800 + Math.random() * 2000,   // plàstic agut
+        vol: 0.15 + Math.random() * 0.35,
+        decay: 0.003 + Math.random() * 0.008  // molt curt, sec
+      });
+      t += gap;
+    }
+
+    // Renderitzar
+    for (let i = 0; i < len; i++) {
+      const t = i / sr;
+      let s = 0;
+
+      // Soroll de fricció continu (boles lliscant)
+      const fraccio = 0.6 + 0.4 * Math.sin(t * Math.PI * 2 / duration * 3);
+      s += (Math.random() * 2 - 1) * 0.04 * fraccio;
+
+      // Xocs individuals
+      for (const x of xocs) {
+        const dt = t - x.t;
+        if (dt < 0 || dt > 0.03) continue;
+        // Impuls curt: soroll filtrat amb envelope exponencial
+        const env = Math.exp(-dt / x.decay);
+        s += (Math.random() * 2 - 1) * env * x.vol;
+        // Component tonal (ressonància del plàstic)
+        s += Math.sin(dt * x.pitch * Math.PI * 2) * env * x.vol * 0.3;
+      }
+
+      // Fade in/out
+      let vol = 1;
+      if (t < 0.15) vol = t / 0.15;
+      if (t > duration - 0.3) vol = (duration - t) / 0.3;
+
+      data[i] = Math.max(-1, Math.min(1, s * vol));
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    // Filtre: com una caixa de fusta (ressona greus/mitjos)
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1200;
+    bp.Q.value = 0.5;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 2.5;
+
+    source.connect(bp);
+    bp.connect(gain);
+    gain.connect(ctx.destination);
+
+    source.onended = () => { ctx.close(); resolve(); };
+    source.start(0);
+  });
+}
+
+// --- Sistema de tonterías ---
+let tonteriasUsadas = {}; // { 'ruta': vegadesUsades }
+
+function resetTonterias() {
+  tonteriasUsadas = {};
+}
+
+function playAudio(src) {
+  return new Promise(resolve => {
+    const audio = new Audio(src);
     audio.onended = resolve;
     audio.onerror = resolve;
     audio.play().catch(resolve);
   });
+}
+
+function tonteriasDisponibles(num) {
+  if (state.tonterias !== 'si') return [];
+
+  const llista = [];
+  const unitat = num % 10;
+
+  // 1. Número exacte (sempre sona, no depèn del mode)
+  if (TONTERIAS.numeros.includes(num)) {
+    llista.push({ src: `audio/tonterias/numeros/${num}.mp3`, prioritat: true });
+  }
+
+  // 2. Unidades: 2 cops per partida, quan la unitat coincideix
+  TONTERIAS.unidades.forEach(u => {
+    if (unitat === u) {
+      const key = `unidades/${u}`;
+      const usat = tonteriasUsadas[key] || 0;
+      if (usat < 2) {
+        llista.push({ src: `audio/tonterias/unidades/${u}.mp3`, key });
+      }
+    }
+  });
+
+  // 3. Aleatoris 1 cop
+  TONTERIAS.aleatorios_1_vez.forEach(nom => {
+    const key = `aleatorios_1_vez/${nom}`;
+    const usat = tonteriasUsadas[key] || 0;
+    if (usat < 1) {
+      llista.push({ src: `audio/tonterias/aleatorios_1_vez/${nom}.mp3`, key });
+    }
+  });
+
+  // 4. Aleatoris 2 cops
+  TONTERIAS.aleatorio_2_veces.forEach(nom => {
+    const key = `aleatorio_2_veces/${nom}`;
+    const usat = tonteriasUsadas[key] || 0;
+    if (usat < 2) {
+      llista.push({ src: `audio/tonterias/aleatorio_2_veces/${nom}.mp3`, key });
+    }
+  });
+
+  return llista;
+}
+
+async function executarTonterias(num) {
+  const disponibles = tonteriasDisponibles(num);
+  if (disponibles.length === 0) return;
+
+  // Prioritaris (numeros exactes) sempre sonen
+  const prioritaris = disponibles.filter(t => t.prioritat);
+  for (const t of prioritaris) {
+    await playAudio(t.src);
+  }
+
+  // Dels no prioritaris, escollir-ne un aleatòriament
+  const opcionals = disponibles.filter(t => !t.prioritat);
+  if (opcionals.length > 0 && Math.random() < 0.25) {
+    const escollit = opcionals[Math.floor(Math.random() * opcionals.length)];
+    tonteriasUsadas[escollit.key] = (tonteriasUsadas[escollit.key] || 0) + 1;
+    await playAudio(escollit.src);
+  }
 }
 
 // --- Historial ---
@@ -287,7 +459,7 @@ function addJugador(nombre) {
   nombre = nombre.trim();
   if (!nombre) return false;
   if (state.jugadores.find(j => j.nombre.toLowerCase() === nombre.toLowerCase())) return false;
-  state.jugadores.push({ nombre, puntos: 0, lineas: 0, bingos: 0 });
+  state.jugadores.push({ nombre, puntos: 0, saldo: state.saldoInicial, lineas: 0, bingos: 0, cartrons: 0 });
   guardar();
   return true;
 }
@@ -319,9 +491,15 @@ function renderConfigJugadores() {
 }
 
 // --- Clasificación ---
+let ordenClasificacion = 'saldo'; // 'saldo' o 'puntos'
+
 function renderClasificacion() {
   const sorted = [...state.jugadores].sort((a, b) => {
-    if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+    if (ordenClasificacion === 'saldo') {
+      if (b.saldo !== a.saldo) return b.saldo - a.saldo;
+    } else {
+      if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+    }
     return b.bingos - a.bingos;
   });
 
@@ -332,11 +510,20 @@ function renderClasificacion() {
       <td>${i + 1}</td>
       <td>${j.nombre}</td>
       <td>${j.puntos}</td>
+      <td>${Math.round(j.saldo * 100) / 100}</td>
       <td>${j.lineas}</td>
       <td>${j.bingos}</td>
     `;
     els.bodyClasificacion.appendChild(tr);
   });
+
+  // Actualitzar botons d'ordre
+  const btnSaldo = document.getElementById('btnOrdenSaldo');
+  const btnPuntos = document.getElementById('btnOrdenPuntos');
+  if (btnSaldo && btnPuntos) {
+    btnSaldo.className = 'btn btn-small ' + (ordenClasificacion === 'saldo' ? 'btn-primary' : 'btn-secondary');
+    btnPuntos.className = 'btn btn-small ' + (ordenClasificacion === 'puntos' ? 'btn-primary' : 'btn-secondary');
+  }
 }
 
 // --- Modal jugador ---
@@ -430,9 +617,11 @@ async function cantarSiguiente() {
   await hablarNumero(num);
 
   // Tonterías
-  const prob = PROB_TONTERIAS[state.tonterias] || 0;
-  if (prob > 0 && NUM_TONTERIAS > 0 && Math.random() < prob) {
-    await reproducirTonteria();
+  await executarTonterias(num);
+
+  // Mini descans cada X boles
+  if (state.descansEach > 0 && state.indice > 0 && state.indice % state.descansEach === 0 && state.indice < 90) {
+    await reproducirDescans();
   }
 
   // Programar siguiente
@@ -459,6 +648,7 @@ async function iniciarJuego() {
     });
     els.historial.innerHTML = '';
     els.numeroActual.textContent = '--';
+    resetTonterias();
   }
 
   state.jugando = true;
@@ -565,6 +755,70 @@ function syncConfigUI() {
   els.selectTonterias.value = state.tonterias;
   els.puntosLineaVal.textContent = state.puntosLinea;
   els.puntosBingoVal.textContent = state.puntosBingo;
+  els.saldoInicialVal.textContent = state.saldoInicial;
+  els.preuCartroVal.textContent = state.preuCartro;
+  els.pctLineaVal.textContent = state.pctLinea + '%';
+  els.pctBingoVal.textContent = (100 - state.pctLinea) + '%';
+  els.selectDescans.value = state.descansEach;
+  els.selectDescansDurada.value = state.descansDurada;
+}
+
+// --- Compra de cartrons ---
+let compraCartrons = {}; // { nombre: numCartrons }
+
+function mostrarPantallaCompra() {
+  compraCartrons = {};
+  state.jugadores.forEach(j => { compraCartrons[j.nombre] = 0; });
+
+  els.compraPreuCartro.textContent = state.preuCartro;
+  renderCompra();
+  els.pantallaCompra.classList.remove('oculto');
+  els.btnInicio.disabled = true;
+}
+
+function renderCompra() {
+  els.compraJugadors.innerHTML = '';
+  let potTotal = 0;
+
+  state.jugadores.forEach(j => {
+    const n = compraCartrons[j.nombre] || 0;
+    const cost = n * state.preuCartro;
+    potTotal += cost;
+    const maxCartrons = Math.floor(j.saldo / state.preuCartro);
+
+    const div = document.createElement('div');
+    div.className = 'compra-jugador';
+    div.innerHTML = `
+      <span class="compra-jugador-nom">${j.nombre}</span>
+      <span class="compra-jugador-saldo">${j.saldo} mon.</span>
+      <div class="compra-jugador-controls">
+        <button class="btn btn-small" data-compra="${j.nombre}" data-dir="-1" ${n <= 0 ? 'disabled' : ''}>-</button>
+        <span>${n}</span>
+        <button class="btn btn-small" data-compra="${j.nombre}" data-dir="1" ${n >= maxCartrons ? 'disabled' : ''}>+</button>
+      </div>
+    `;
+    els.compraJugadors.appendChild(div);
+  });
+
+  els.compraPot.textContent = potTotal;
+  els.compraPotLinea.textContent = Math.round(potTotal * state.pctLinea / 100 * 100) / 100;
+  els.compraPotBingo.textContent = Math.round(potTotal * (100 - state.pctLinea) / 100 * 100) / 100;
+  els.btnCompraOk.disabled = potTotal === 0;
+}
+
+function confirmarCompra() {
+  let potTotal = 0;
+  state.jugadores.forEach(j => {
+    const n = compraCartrons[j.nombre] || 0;
+    const cost = n * state.preuCartro;
+    j.saldo -= cost;
+    j.cartrons = n;
+    potTotal += cost;
+  });
+  state.potActual = potTotal;
+  els.pantallaCompra.classList.add('oculto');
+  guardar();
+  iniciarJuego();
 }
 
 // --- Eventos ---
@@ -607,7 +861,25 @@ function initEventos() {
   });
 
   // Controles
-  els.btnInicio.addEventListener('click', iniciarJuego);
+  els.btnInicio.addEventListener('click', () => {
+    if (!state.partidaEnCurso) {
+      mostrarPantallaCompra();
+    } else {
+      iniciarJuego();
+    }
+  });
+
+  // Compra cartrons
+  els.compraJugadors.addEventListener('click', e => {
+    const btn = e.target.closest('[data-compra]');
+    if (!btn || btn.disabled) return;
+    const nombre = btn.dataset.compra;
+    const dir = parseInt(btn.dataset.dir);
+    compraCartrons[nombre] = Math.max(0, (compraCartrons[nombre] || 0) + dir);
+    renderCompra();
+  });
+
+  els.btnCompraOk.addEventListener('click', confirmarCompra);
   els.btnPausa.addEventListener('click', pausarJuego);
   els.btnReset.addEventListener('click', resetPartida);
 
@@ -643,12 +915,16 @@ function initEventos() {
     tancarVerificacio();
 
     if (tipo === 'linea') {
+      const premiLinea = state.potActual * state.pctLinea / 100;
       abrirModal('Qui canta LINEA?', async (jugadores) => {
+        const saldoPerPersona = premiLinea / jugadores.length;
+        const puntsPerPersona = state.puntosLinea / jugadores.length;
         jugadores.forEach(nombre => {
           const j = state.jugadores.find(x => x.nombre === nombre);
           if (j) {
             j.lineas++;
-            j.puntos += state.puntosLinea;
+            j.saldo += saldoPerPersona;
+            j.puntos += puntsPerPersona;
           }
         });
         renderClasificacion();
@@ -657,12 +933,16 @@ function initEventos() {
         if (estabaJugando) iniciarJuego();
       });
     } else {
+      const premiBingo = state.potActual * (100 - state.pctLinea) / 100;
       abrirModal('Qui canta BINGO?', async (jugadores) => {
+        const saldoPerPersona = premiBingo / jugadores.length;
+        const puntsPerPersona = state.puntosBingo / jugadores.length;
         jugadores.forEach(nombre => {
           const j = state.jugadores.find(x => x.nombre === nombre);
           if (j) {
             j.bingos++;
-            j.puntos += state.puntosBingo;
+            j.saldo += saldoPerPersona;
+            j.puntos += puntsPerPersona;
           }
         });
         renderClasificacion();
@@ -689,15 +969,37 @@ function initEventos() {
     }
   });
 
+  // Clasificación - orden
+  document.getElementById('btnOrdenSaldo').addEventListener('click', () => {
+    ordenClasificacion = 'saldo';
+    renderClasificacion();
+  });
+  document.getElementById('btnOrdenPuntos').addEventListener('click', () => {
+    ordenClasificacion = 'puntos';
+    renderClasificacion();
+  });
+
   // Clasificación reset
   els.btnResetClasificacion.addEventListener('click', () => {
-    if (!confirm('¿Resetear toda la clasificación? Los puntos de todos los jugadores se pondrán a 0.')) return;
+    if (!confirm('Resetear classificació? Tots els jugadors tornaran al saldo inicial i 0 punts.')) return;
     state.jugadores.forEach(j => {
+      j.saldo = state.saldoInicial;
       j.puntos = 0;
       j.lineas = 0;
       j.bingos = 0;
     });
     renderClasificacion();
+    guardar();
+  });
+
+  // Config - descans
+  els.selectDescans.addEventListener('change', () => {
+    state.descansEach = parseInt(els.selectDescans.value);
+    guardar();
+  });
+
+  els.selectDescansDurada.addEventListener('change', () => {
+    state.descansDurada = parseInt(els.selectDescansDurada.value);
     guardar();
   });
 
@@ -719,17 +1021,27 @@ function initEventos() {
     guardar();
   });
 
-  // Config - puntos
-  document.querySelectorAll('[data-puntos]').forEach(btn => {
+  // Config - monedes
+  document.querySelectorAll('[data-config]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const tipo = btn.dataset.puntos;
+      const camp = btn.dataset.config;
       const dir = parseInt(btn.dataset.dir);
-      if (tipo === 'linea') {
+      if (camp === 'saldoInicial') {
+        state.saldoInicial = Math.max(10, state.saldoInicial + dir);
+        els.saldoInicialVal.textContent = state.saldoInicial;
+      } else if (camp === 'puntosLinea') {
         state.puntosLinea = Math.max(0, state.puntosLinea + dir);
         els.puntosLineaVal.textContent = state.puntosLinea;
-      } else {
+      } else if (camp === 'puntosBingo') {
         state.puntosBingo = Math.max(0, state.puntosBingo + dir);
         els.puntosBingoVal.textContent = state.puntosBingo;
+      } else if (camp === 'preuCartro') {
+        state.preuCartro = Math.max(1, state.preuCartro + dir);
+        els.preuCartroVal.textContent = state.preuCartro;
+      } else if (camp === 'pctLinea') {
+        state.pctLinea = Math.max(0, Math.min(100, state.pctLinea + dir));
+        els.pctLineaVal.textContent = state.pctLinea + '%';
+        els.pctBingoVal.textContent = (100 - state.pctLinea) + '%';
       }
       guardar();
     });

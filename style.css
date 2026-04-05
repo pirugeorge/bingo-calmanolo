@@ -229,6 +229,69 @@ body {
   padding: 0.5rem 1rem;
 }
 
+/* ===== COMPRA CARTRONS ===== */
+#pantallaCompra {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+#pantallaCompra h2 {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.compra-info {
+  text-align: center;
+  color: var(--text2);
+  margin-bottom: 1rem;
+}
+
+.compra-jugador {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--tablero-border);
+}
+
+.compra-jugador-nom {
+  font-weight: 600;
+  min-width: 80px;
+}
+
+.compra-jugador-saldo {
+  color: var(--text2);
+  font-size: 0.85rem;
+  min-width: 60px;
+  text-align: center;
+}
+
+.compra-jugador-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.compra-jugador-controls span {
+  font-size: 1.2rem;
+  font-weight: 700;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.compra-pot {
+  text-align: center;
+  padding: 1rem 0;
+  font-size: 1.1rem;
+}
+
+.compra-detall {
+  display: block;
+  color: var(--text2);
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+}
+
 /* ===== ZONA NÚMERO ===== */
 #zonaNumero {
   text-align: center;
@@ -458,6 +521,13 @@ body {
 #seccionClasificacion h2 {
   text-align: center;
   margin-bottom: 0.5rem;
+}
+
+.clasificacion-orden {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 0.8rem;
 }
 
 #tablaClasificacion {
