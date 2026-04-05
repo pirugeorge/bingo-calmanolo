@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Bingo Cal Manolo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header id="header">
+    <h1>BINGO CAL MANOLO</h1>
+    <button id="btnTema" aria-label="Cambiar tema"></button>
+  </header>
+
+  <!-- PANTALLA SETUP (jugadores iniciales) -->
+  <section id="pantallaSetup" class="pantalla">
+    <h2>Jugadores</h2>
+    <div id="setupJugadores"></div>
+    <div class="input-group">
+      <input type="text" id="inputNuevoJugador" placeholder="Nombre del jugador" maxlength="20">
+      <button id="btnAddJugador" class="btn btn-primary">Añadir</button>
+    </div>
+    <button id="btnEmpezar" class="btn btn-grande btn-primary" disabled>Empezar</button>
+  </section>
+
+  <!-- PANTALLA JUEGO -->
+  <section id="pantallaJuego" class="pantalla oculto">
+
+    <!-- Tabs -->
+    <nav id="tabs">
+      <button class="tab activa" data-tab="tabJuego">Juego</button>
+      <button class="tab" data-tab="tabClasificacion">Clasificaci&oacute;n</button>
+      <button class="tab" data-tab="tabConfig">Configuraci&oacute;n</button>
+    </nav>
+
+    <!-- TAB 1: JUEGO -->
+    <div id="tabJuego" class="tab-content">
+      <!-- Número actual -->
+      <div id="zonaNumero">
+        <div id="bolaActual">
+          <span id="numeroActual">--</span>
+        </div>
+        <div id="contadorBolas">Pulsa INICIO</div>
+      </div>
+
+      <!-- Historial reciente -->
+      <div id="historial"></div>
+
+      <!-- Tablero -->
+      <div id="tablero"></div>
+
+      <!-- Controles -->
+      <div id="controles">
+        <button id="btnInicio" class="btn btn-primary">Inicio</button>
+        <button id="btnPausa" class="btn btn-secondary" disabled>Pausa</button>
+        <button id="btnReset" class="btn btn-danger">Reset</button>
+      </div>
+
+      <!-- Botones Línea y Bingo -->
+      <div id="botonesEvento">
+        <button id="btnLinea" class="btn btn-linea" disabled>LINEA</button>
+        <button id="btnBingo" class="btn btn-bingo" disabled>BINGO</button>
+      </div>
+
+      <!-- Barra verificación -->
+      <div id="barraVerificacion" class="oculto">
+        <span id="verificacionTexto"></span>
+        <div class="verificacion-botones">
+          <button id="btnVerificacionOk" class="btn btn-primary">Correcte</button>
+          <button id="btnVerificacionCancel" class="btn btn-secondary">Cancel&middot;lar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: CLASIFICACIÓN -->
+    <div id="tabClasificacion" class="tab-content oculto">
+      <h2>Clasificaci&oacute;n</h2>
+      <table id="tablaClasificacion">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Jugador</th>
+            <th>Pts</th>
+            <th>L</th>
+            <th>B</th>
+          </tr>
+        </thead>
+        <tbody id="bodyClasificacion"></tbody>
+      </table>
+      <button id="btnResetClasificacion" class="btn btn-danger btn-small">Resetear clasificaci&oacute;n</button>
+    </div>
+
+    <!-- TAB 3: CONFIGURACIÓN -->
+    <div id="tabConfig" class="tab-content oculto">
+      <h2>Configuraci&oacute;n</h2>
+
+      <div class="config-grupo">
+        <label>Voz</label>
+        <select id="selectVoz">
+          <option value="default">Predeterminada</option>
+        </select>
+      </div>
+
+      <div class="config-grupo">
+        <label>Velocidad</label>
+        <select id="selectVelocidad">
+          <option value="3000">Muy lento</option>
+          <option value="2000">Lento</option>
+          <option value="1200" selected>Normal</option>
+          <option value="800">R&aacute;pida</option>
+          <option value="500">Turbo</option>
+        </select>
+      </div>
+
+      <div class="config-grupo oculto">
+        <label>Tonter&iacute;as</label>
+        <select id="selectTonterias">
+          <option value="sin" selected>Sin tonter&iacute;as</option>
+          <option value="alguna">Alguna tonter&iacute;a</option>
+          <option value="muchas">Muchas tonter&iacute;as</option>
+        </select>
+      </div>
+
+      <div class="config-grupo">
+        <label>Pts L&iacute;nea</label>
+        <div class="config-puntos">
+          <button class="btn btn-small" data-puntos="linea" data-dir="-1">-</button>
+          <span id="puntosLineaVal">1</span>
+          <button class="btn btn-small" data-puntos="linea" data-dir="1">+</button>
+        </div>
+      </div>
+
+      <div class="config-grupo">
+        <label>Pts Bingo</label>
+        <div class="config-puntos">
+          <button class="btn btn-small" data-puntos="bingo" data-dir="-1">-</button>
+          <span id="puntosBingoVal">3</span>
+          <button class="btn btn-small" data-puntos="bingo" data-dir="1">+</button>
+        </div>
+      </div>
+
+      <div class="config-grupo config-grupo-vertical">
+        <label>Jugadores</label>
+        <div id="configJugadores"></div>
+        <div class="input-group">
+          <input type="text" id="inputAddJugadorConfig" placeholder="Nuevo jugador" maxlength="20">
+          <button id="btnAddJugadorConfig" class="btn btn-small btn-primary">+</button>
+        </div>
+      </div>
+
+      <button id="btnBorrarDatos" class="btn btn-danger">Borrar todos los datos</button>
+    </div>
+
+    <!-- Modal selección jugador -->
+    <div id="modalJugador" class="modal oculto">
+      <div class="modal-content">
+        <h3 id="modalTitulo"></h3>
+        <div id="modalJugadores"></div>
+        <div class="modal-botones">
+          <button id="modalConfirmar" class="btn btn-primary" disabled>Confirmar</button>
+          <button id="modalCancelar" class="btn btn-secondary">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Confeti container -->
+  <div id="confeti" class="oculto"></div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
