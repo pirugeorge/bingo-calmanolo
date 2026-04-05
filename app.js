@@ -296,79 +296,71 @@ function hablarBingo() {
   });
 }
 
+function generarWavBarreja(duration) {
+  const sr = 22050;
+  const len = Math.floor(sr * duration);
+  const samples = new Float32Array(len);
+
+  // Pre-generar events de xoc
+  const xocs = [];
+  let t = 0.05;
+  while (t < duration - 0.3) {
+    const velocitat = 0.6 + 0.4 * Math.sin(t * Math.PI * 2 / duration * 3);
+    const gap = (0.01 + Math.random() * 0.06) / velocitat;
+    xocs.push({
+      t, pitch: 800 + Math.random() * 2000,
+      vol: 0.15 + Math.random() * 0.35,
+      decay: 0.003 + Math.random() * 0.008
+    });
+    t += gap;
+  }
+
+  for (let i = 0; i < len; i++) {
+    const t = i / sr;
+    let s = 0;
+    const fraccio = 0.6 + 0.4 * Math.sin(t * Math.PI * 2 / duration * 3);
+    s += (Math.random() * 2 - 1) * 0.04 * fraccio;
+    for (const x of xocs) {
+      const dt = t - x.t;
+      if (dt < 0 || dt > 0.03) continue;
+      const env = Math.exp(-dt / x.decay);
+      s += (Math.random() * 2 - 1) * env * x.vol;
+      s += Math.sin(dt * x.pitch * Math.PI * 2) * env * x.vol * 0.3;
+    }
+    let vol = 1;
+    if (t < 0.15) vol = t / 0.15;
+    if (t > duration - 0.3) vol = (duration - t) / 0.3;
+    samples[i] = Math.max(-1, Math.min(1, s * vol * 2.5));
+  }
+
+  // Codificar com WAV
+  const numSamples = samples.length;
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+  const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + numSamples * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sr, true);
+  view.setUint32(28, sr * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, numSamples * 2, true);
+  for (let i = 0; i < numSamples; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+}
+
 function reproducirDescans() {
-  return new Promise(resolve => {
-    const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') ctx.resume();
-    const duration = state.descansDurada;
-    const sr = ctx.sampleRate;
-    const len = Math.floor(sr * duration);
-    const buffer = ctx.createBuffer(1, len, sr);
-    const data = buffer.getChannelData(0);
-
-    // Pre-generar events de xoc (boles de plàstic dins caixa de fusta)
-    const xocs = [];
-    let t = 0.05;
-    while (t < duration - 0.3) {
-      // Densitat variable: accelera i frena com si giressin el bombo
-      const velocitat = 0.6 + 0.4 * Math.sin(t * Math.PI * 2 / duration * 3);
-      const gap = (0.01 + Math.random() * 0.06) / velocitat;
-      xocs.push({
-        t: t,
-        pitch: 800 + Math.random() * 2000,   // plàstic agut
-        vol: 0.15 + Math.random() * 0.35,
-        decay: 0.003 + Math.random() * 0.008  // molt curt, sec
-      });
-      t += gap;
-    }
-
-    // Renderitzar
-    for (let i = 0; i < len; i++) {
-      const t = i / sr;
-      let s = 0;
-
-      // Soroll de fricció continu (boles lliscant)
-      const fraccio = 0.6 + 0.4 * Math.sin(t * Math.PI * 2 / duration * 3);
-      s += (Math.random() * 2 - 1) * 0.04 * fraccio;
-
-      // Xocs individuals
-      for (const x of xocs) {
-        const dt = t - x.t;
-        if (dt < 0 || dt > 0.03) continue;
-        // Impuls curt: soroll filtrat amb envelope exponencial
-        const env = Math.exp(-dt / x.decay);
-        s += (Math.random() * 2 - 1) * env * x.vol;
-        // Component tonal (ressonància del plàstic)
-        s += Math.sin(dt * x.pitch * Math.PI * 2) * env * x.vol * 0.3;
-      }
-
-      // Fade in/out
-      let vol = 1;
-      if (t < 0.15) vol = t / 0.15;
-      if (t > duration - 0.3) vol = (duration - t) / 0.3;
-
-      data[i] = Math.max(-1, Math.min(1, s * vol));
-    }
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-
-    // Filtre: com una caixa de fusta (ressona greus/mitjos)
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 1200;
-    bp.Q.value = 0.5;
-
-    const gain = ctx.createGain();
-    gain.gain.value = 2.5;
-
-    source.connect(bp);
-    bp.connect(gain);
-    gain.connect(ctx.destination);
-
-    source.onended = () => { if (ctx !== audioCtx) ctx.close(); resolve(); };
-    source.start(0);
-  });
+  const wavUrl = generarWavBarreja(state.descansDurada);
+  return playAudio(wavUrl).then(() => URL.revokeObjectURL(wavUrl));
 }
 
 // --- Sistema de tonterías ---
