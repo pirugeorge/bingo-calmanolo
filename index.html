@@ -57,7 +57,7 @@
       </div>
 
       <!-- Número actual -->
-      <div id="zonaNumero">
+      <div id="zonaNumero" class="oculto">
         <div id="bolaActual">
           <span id="numeroActual">--</span>
         </div>
@@ -65,20 +65,20 @@
       </div>
 
       <!-- Historial reciente -->
-      <div id="historial"></div>
+      <div id="historial" class="oculto"></div>
 
       <!-- Tablero -->
-      <div id="tablero"></div>
+      <div id="tablero" class="oculto"></div>
 
       <!-- Controles -->
-      <div id="controles">
+      <div id="controles" class="oculto">
         <button id="btnInicio" class="btn btn-primary">Inicio</button>
         <button id="btnPausa" class="btn btn-secondary" disabled>Pausa</button>
         <button id="btnReset" class="btn btn-danger">Reset</button>
       </div>
 
       <!-- Botones Línea y Bingo -->
-      <div id="botonesEvento">
+      <div id="botonesEvento" class="oculto">
         <button id="btnLinea" class="btn btn-linea" disabled>LINEA</button>
         <button id="btnBingo" class="btn btn-bingo" disabled>BINGO</button>
       </div>
@@ -119,13 +119,6 @@
     <!-- TAB 3: CONFIGURACIÓN -->
     <div id="tabConfig" class="tab-content oculto">
       <h2>Configuraci&oacute;n</h2>
-
-      <div class="config-grupo">
-        <label>Voz</label>
-        <select id="selectVoz">
-          <option value="default">Predeterminada</option>
-        </select>
-      </div>
 
       <div class="config-grupo">
         <label>Descans cada</label>

@@ -80,11 +80,14 @@ const els = {
   inputNuevoJugador: $('inputNuevoJugador'),
   btnAddJugador: $('btnAddJugador'),
   btnEmpezar: $('btnEmpezar'),
+  zonaNumero: $('zonaNumero'),
   bolaActual: $('bolaActual'),
   numeroActual: $('numeroActual'),
   contadorBolas: $('contadorBolas'),
   historial: $('historial'),
   tablero: $('tablero'),
+  controles: $('controles'),
+  botonesEvento: $('botonesEvento'),
   btnInicio: $('btnInicio'),
   btnPausa: $('btnPausa'),
   btnReset: $('btnReset'),
@@ -97,7 +100,6 @@ const els = {
   modalCancelar: $('modalCancelar'),
   bodyClasificacion: $('bodyClasificacion'),
   btnResetClasificacion: $('btnResetClasificacion'),
-  selectVoz: $('selectVoz'),
   selectVelocidad: $('selectVelocidad'),
   selectTonterias: $('selectTonterias'),
   puntosLineaVal: $('puntosLineaVal'),
@@ -729,25 +731,9 @@ function cambiarTab(tabId) {
   document.querySelector(`[data-tab="${tabId}"]`).classList.add('activa');
 }
 
-// --- Voces: cargar opciones ---
-function cargarVoces() {
-  // Limpiar y añadir predeterminadas
-  els.selectVoz.innerHTML = '<option value="default">Predeterminada</option>';
-
-  // Añadir voces grabadas
-  VOCES_GRABADAS.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v.id;
-    opt.textContent = v.nombre;
-    els.selectVoz.appendChild(opt);
-  });
-
-  els.selectVoz.value = state.voz;
-}
 
 // --- Inicializar config UI ---
 function syncConfigUI() {
-  els.selectVoz.value = state.voz;
   els.selectVelocidad.value = state.velocidad;
   els.selectTonterias.value = state.tonterias;
   els.puntosLineaVal.textContent = state.puntosLinea;
@@ -763,12 +749,18 @@ function syncConfigUI() {
 // --- Compra de cartrons ---
 let compraCartrons = {}; // { nombre: numCartrons }
 
+function ocultarZonaJoc(amagar) {
+  const zones = [els.zonaNumero, els.historial, els.tablero, els.controles, els.botonesEvento];
+  zones.forEach(el => { if (el) el.classList.toggle('oculto', amagar); });
+}
+
 function mostrarPantallaCompra() {
   compraCartrons = {};
   state.jugadores.forEach(j => { compraCartrons[j.nombre] = 0; });
 
   els.compraPreuCartro.textContent = state.preuCartro;
   renderCompra();
+  ocultarZonaJoc(true);
   els.pantallaCompra.classList.remove('oculto');
   els.btnInicio.disabled = true;
 }
@@ -814,6 +806,7 @@ function confirmarCompra() {
   });
   state.potActual = potTotal;
   els.pantallaCompra.classList.add('oculto');
+  ocultarZonaJoc(false);
   guardar();
   iniciarJuego();
 }
@@ -864,6 +857,9 @@ function initEventos() {
     renderClasificacion();
     renderConfigJugadores();
     guardar();
+    if (!state.partidaEnCurso) {
+      mostrarPantallaCompra();
+    }
   });
 
   // Controles
@@ -1009,12 +1005,6 @@ function initEventos() {
     guardar();
   });
 
-  // Config - voz
-  els.selectVoz.addEventListener('change', () => {
-    state.voz = els.selectVoz.value;
-    guardar();
-  });
-
   // Config - velocidad
   els.selectVelocidad.addEventListener('change', () => {
     state.velocidad = parseInt(els.selectVelocidad.value);
@@ -1095,7 +1085,6 @@ function init() {
   const teniaDatos = cargar();
   initTema();
   crearTablero();
-  cargarVoces();
 
   if (teniaDatos && state.jugadores.length > 0) {
     // Restaurar partida
@@ -1107,6 +1096,7 @@ function init() {
     renderClasificacion();
 
     if (state.partidaEnCurso) {
+      ocultarZonaJoc(false);
       restaurarTablero();
       renderHistorial();
       if (state.cantados.length > 0) {
@@ -1116,6 +1106,8 @@ function init() {
       // No auto-reanudar, dejar en pausa
       state.jugando = false;
       state.pausado = true;
+    } else {
+      mostrarPantallaCompra();
     }
 
     actualizarBotones();

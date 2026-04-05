@@ -146,7 +146,7 @@ body {
 
 #pantallaSetup h2 {
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   font-size: 1.5rem;
 }
 
@@ -176,24 +176,42 @@ body {
   color: var(--btn-danger);
   font-size: 1.1rem;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 1.2rem;
+  height: 1.2rem;
   line-height: 1;
-  padding: 0 0.2rem;
 }
 
 .input-group {
   display: flex;
-  gap: 0.5rem;
+  gap: 0;
   margin-bottom: 0.5rem;
 }
 
 .input-group input {
   flex: 1;
-  padding: 0.7rem;
+  padding: 0.75rem 1rem;
   border: 2px solid var(--tablero-border);
-  border-radius: 8px;
+  border-radius: 10px 0 0 10px;
   font-size: 1rem;
   background: var(--bg2);
   color: var(--text);
+  border-right: none;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--accent2);
+}
+
+.input-group .btn {
+  border-radius: 0 10px 10px 0;
+  padding: 0.75rem 1.2rem;
+  font-size: 1rem;
+  white-space: nowrap;
 }
 
 /* ===== TABS ===== */
@@ -617,6 +635,10 @@ body {
 .config-grupo.config-grupo-vertical {
   flex-direction: column;
   align-items: stretch;
+}
+
+.config-grupo-vertical label {
+  margin-bottom: 0.8rem;
 }
 
 .config-grupo-vertical .input-group {
