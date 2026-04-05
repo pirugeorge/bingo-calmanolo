@@ -18,14 +18,14 @@ const TONTERIAS = {
   // Sonen just després del número corresponent (sempre)
   numeros: [22, 26, 44, 57, 61, 85, 90],
 
-  // Sonen 1 cop per partida, en moments aleatoris
-  aleatorios_1_vez: ['callate', 'donde_esta_la_pelotita', 'me_aburro', 'mima_va_que_me_aburro', 'pedo'],
-
-  // Sonen 2 cops per partida, en moments aleatoris
-  aleatorio_2_veces: ['miguel_callate'],
+  // Aleatoris: a partir de la bola 25, màxim 3 per partida
+  aleatorios: ['callate', 'donde_esta_la_pelotita', 'me_aburro', 'mima_va_que_me_aburro', 'pedo'],
+  maxAleatoris: 3,
 
   // Sonen 2 cops per partida, només quan la unitat del número coincideix
-  unidades: [5, 8]
+  // Excepció: unitat 5 no sona amb el 15
+  unidades: [5, 8],
+  unidadesExcepcions: { 5: [15] }
 };
 
 const VELOCIDADES = {
@@ -383,65 +383,51 @@ function playAudio(src) {
   });
 }
 
-function tonteriasDisponibles(num) {
-  if (state.tonterias !== 'si') return [];
-
-  const llista = [];
-  const unitat = num % 10;
-
-  // 1. Número exacte (sempre sona, no depèn del mode)
-  if (TONTERIAS.numeros.includes(num)) {
-    llista.push({ src: `audio/tonterias/numeros/${num}.mp3`, prioritat: true });
-  }
-
-  // 2. Unidades: 2 cops per partida, quan la unitat coincideix
-  TONTERIAS.unidades.forEach(u => {
-    if (unitat === u) {
-      const key = `unidades/${u}`;
-      const usat = tonteriasUsadas[key] || 0;
-      if (usat < 2) {
-        llista.push({ src: `audio/tonterias/unidades/${u}.mp3`, key });
-      }
-    }
-  });
-
-  // 3. Aleatoris 1 cop
-  TONTERIAS.aleatorios_1_vez.forEach(nom => {
-    const key = `aleatorios_1_vez/${nom}`;
-    const usat = tonteriasUsadas[key] || 0;
-    if (usat < 1) {
-      llista.push({ src: `audio/tonterias/aleatorios_1_vez/${nom}.mp3`, key });
-    }
-  });
-
-  // 4. Aleatoris 2 cops
-  TONTERIAS.aleatorio_2_veces.forEach(nom => {
-    const key = `aleatorio_2_veces/${nom}`;
-    const usat = tonteriasUsadas[key] || 0;
-    if (usat < 2) {
-      llista.push({ src: `audio/tonterias/aleatorio_2_veces/${nom}.mp3`, key });
-    }
-  });
-
-  return llista;
-}
-
 async function executarTonterias(num) {
-  const disponibles = tonteriasDisponibles(num);
-  if (disponibles.length === 0) return;
+  if (state.tonterias !== 'si') return;
 
-  // Prioritaris (numeros exactes) sempre sonen
-  const prioritaris = disponibles.filter(t => t.prioritat);
-  for (const t of prioritaris) {
-    await playAudio(t.src);
+  // Excepció 44: sona numeros/44 + miguel_callate (únic cas amb 2 àudios)
+  if (num === 44) {
+    await playAudio('audio/tonterias/numeros/44.mp3');
+    await playAudio('audio/tonterias/aleatorios/miguel_callate.mp3');
+    return;
   }
 
-  // Dels no prioritaris, escollir-ne un aleatòriament
-  const opcionals = disponibles.filter(t => !t.prioritat);
-  if (opcionals.length > 0 && Math.random() < 0.25) {
-    const escollit = opcionals[Math.floor(Math.random() * opcionals.length)];
-    tonteriasUsadas[escollit.key] = (tonteriasUsadas[escollit.key] || 0) + 1;
-    await playAudio(escollit.src);
+  // Per la resta: màxim 1 àudio de tonteria per número
+
+  // 1. Número exacte (prioritat màxima)
+  if (TONTERIAS.numeros.includes(num)) {
+    await playAudio(`audio/tonterias/numeros/${num}.mp3`);
+    return;
+  }
+
+  // 2. Unidades: 2 cops per partida, quan la unitat coincideix (amb excepcions)
+  const unitat = num % 10;
+  for (const u of TONTERIAS.unidades) {
+    if (unitat !== u) continue;
+    const excepcions = TONTERIAS.unidadesExcepcions[u] || [];
+    if (excepcions.includes(num)) continue;
+    const key = `unidades/${u}`;
+    const usat = tonteriasUsadas[key] || 0;
+    if (usat < 2 && Math.random() < 0.25) {
+      tonteriasUsadas[key] = usat + 1;
+      await playAudio(`audio/tonterias/unidades/${u}.mp3`);
+      return;
+    }
+  }
+
+  // 3. Aleatoris: a partir de la bola 25, màxim 3 per partida, mínim 8 boles entre ells
+  const aleatorisUsats = tonteriasUsadas._aleatorisTotal || 0;
+  const ultimaBolaAleatori = tonteriasUsadas._ultimaBolaAleatori || 0;
+  if (state.indice >= 25 && aleatorisUsats < TONTERIAS.maxAleatoris && (state.indice - ultimaBolaAleatori) >= 8 && Math.random() < 0.25) {
+    const disponibles = TONTERIAS.aleatorios.filter(nom => !tonteriasUsadas[`aleatorios/${nom}`]);
+    if (disponibles.length > 0) {
+      const escollit = disponibles[Math.floor(Math.random() * disponibles.length)];
+      tonteriasUsadas[`aleatorios/${escollit}`] = 1;
+      tonteriasUsadas._aleatorisTotal = aleatorisUsats + 1;
+      tonteriasUsadas._ultimaBolaAleatori = state.indice;
+      await playAudio(`audio/tonterias/aleatorios/${escollit}.mp3`);
+    }
   }
 }
 
@@ -702,7 +688,7 @@ function resetPartida() {
   state.partidaEnCurso = false;
 
   els.numeroActual.textContent = '--';
-  els.contadorBolas.textContent = 'Pulsa INICIO';
+  els.contadorBolas.textContent = 'Prem INICI';
   els.historial.innerHTML = '';
   els.tablero.querySelectorAll('.celda').forEach(c => {
     c.classList.remove('marcada', 'ultima');
@@ -717,7 +703,7 @@ function actualizarBotones() {
   const enPausa = state.partidaEnCurso && state.pausado;
 
   els.btnInicio.disabled = enJuego;
-  els.btnInicio.textContent = state.partidaEnCurso ? 'Continuar' : 'Inicio';
+  els.btnInicio.textContent = state.partidaEnCurso ? 'Continuar' : 'Inici';
   els.btnPausa.disabled = !enJuego;
   els.btnLinea.disabled = !state.partidaEnCurso;
   els.btnBingo.disabled = !state.partidaEnCurso;
@@ -1025,6 +1011,9 @@ function initEventos() {
       if (camp === 'saldoInicial') {
         state.saldoInicial = Math.max(10, state.saldoInicial + dir);
         els.saldoInicialVal.textContent = state.saldoInicial;
+        if (!state.partidaEnCurso) {
+          state.jugadores.forEach(j => { j.saldo = state.saldoInicial; });
+        }
       } else if (camp === 'puntosLinea') {
         state.puntosLinea = Math.max(0, state.puntosLinea + dir);
         els.puntosLineaVal.textContent = state.puntosLinea;
@@ -1040,6 +1029,12 @@ function initEventos() {
         els.pctBingoVal.textContent = (100 - state.pctLinea) + '%';
       }
       guardar();
+      if (!els.pantallaCompra.classList.contains('oculto')) {
+        els.compraPreuCartro.textContent = state.preuCartro;
+        compraCartrons = {};
+        state.jugadores.forEach(j => { compraCartrons[j.nombre] = 0; });
+        renderCompra();
+      }
     });
   });
 
@@ -1059,7 +1054,7 @@ function initEventos() {
   // Config - eliminar jugador
   els.configJugadores.addEventListener('click', e => {
     if (e.target.classList.contains('chip-remove')) {
-      if (!confirm(`¿Eliminar a ${e.target.dataset.nombre}?`)) return;
+      if (!confirm(`Eliminar ${e.target.dataset.nombre}?`)) return;
       removeJugador(e.target.dataset.nombre);
       renderConfigJugadores();
       renderClasificacion();
@@ -1068,7 +1063,7 @@ function initEventos() {
 
   // Borrar datos
   els.btnBorrarDatos.addEventListener('click', () => {
-    if (!confirm('¿Borrar TODOS los datos? Se perderán jugadores, clasificación y la partida actual.')) return;
+    if (!confirm('Esborrar TOTES les dades? Es perdran jugadors, classificació i la partida actual.')) return;
     localStorage.removeItem('bingo_state');
     location.reload();
   });

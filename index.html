@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="ca">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -17,18 +17,24 @@
   <!-- HEADER -->
   <header id="header">
     <h1>BINGO CAL MANOLO</h1>
-    <button id="btnTema" aria-label="Cambiar tema"></button>
+    <button id="btnTema" aria-label="Canviar tema"></button>
   </header>
 
   <!-- PANTALLA SETUP (jugadores iniciales) -->
   <section id="pantallaSetup" class="pantalla">
-    <h2>Jugadores</h2>
+    <div class="setup-hero">
+      <img src="logo.jpeg" alt="Bingo Cal Manolo" class="setup-logo">
+      <h2>Bingo Cal Manolo</h2>
+      <p class="setup-desc">Benvinguts a l'aplicaci&oacute; Bingo Cal Manolo. El Joc del Bingo personalitzat per la familia Ar&eacute;valo, on l'objectiu es que no guanyi l'Aurora!</p>
+    </div>
+    <h3 class="setup-subtitol">Jugadors</h3>
+    <p class="setup-instruccio">Introdueix els noms dels jugadors per comen&ccedil;ar la partida</p>
     <div id="setupJugadores"></div>
     <div class="input-group">
-      <input type="text" id="inputNuevoJugador" placeholder="Nombre del jugador" maxlength="20">
-      <button id="btnAddJugador" class="btn btn-primary">Añadir</button>
+      <input type="text" id="inputNuevoJugador" placeholder="Nom del jugador" maxlength="20">
+      <button id="btnAddJugador" class="btn btn-primary">Afegir</button>
     </div>
-    <button id="btnEmpezar" class="btn btn-grande btn-primary" disabled>Empezar</button>
+    <button id="btnEmpezar" class="btn btn-grande btn-primary" disabled>Comen&ccedil;ar</button>
   </section>
 
   <!-- PANTALLA JUEGO -->
@@ -36,9 +42,9 @@
 
     <!-- Tabs -->
     <nav id="tabs">
-      <button class="tab activa" data-tab="tabJuego">Juego</button>
-      <button class="tab" data-tab="tabClasificacion">Clasificaci&oacute;n</button>
-      <button class="tab" data-tab="tabConfig">Configuraci&oacute;n</button>
+      <button class="tab activa" data-tab="tabJuego">Joc</button>
+      <button class="tab" data-tab="tabClasificacion">Classificaci&oacute;</button>
+      <button class="tab" data-tab="tabConfig">Configuraci&oacute;</button>
     </nav>
 
     <!-- TAB 1: JUEGO -->
@@ -61,7 +67,7 @@
         <div id="bolaActual">
           <span id="numeroActual">--</span>
         </div>
-        <div id="contadorBolas">Pulsa INICIO</div>
+        <div id="contadorBolas">Prem INICI</div>
       </div>
 
       <!-- Historial reciente -->
@@ -72,7 +78,7 @@
 
       <!-- Controles -->
       <div id="controles" class="oculto">
-        <button id="btnInicio" class="btn btn-primary">Inicio</button>
+        <button id="btnInicio" class="btn btn-primary">Inici</button>
         <button id="btnPausa" class="btn btn-secondary" disabled>Pausa</button>
         <button id="btnReset" class="btn btn-danger">Reset</button>
       </div>
@@ -95,16 +101,16 @@
 
     <!-- TAB 2: CLASIFICACIÓN -->
     <div id="tabClasificacion" class="tab-content oculto">
-      <h2>Clasificaci&oacute;n</h2>
+      <h2>Classificaci&oacute;</h2>
       <div class="clasificacion-orden">
         <button id="btnOrdenSaldo" class="btn btn-small btn-primary">Saldo</button>
-        <button id="btnOrdenPuntos" class="btn btn-small btn-secondary">Puntos</button>
+        <button id="btnOrdenPuntos" class="btn btn-small btn-secondary">Punts</button>
       </div>
       <table id="tablaClasificacion">
         <thead>
           <tr>
             <th>#</th>
-            <th>Jugador</th>
+            <th>Jugador/a</th>
             <th>Pts</th>
             <th>Saldo</th>
             <th>L</th>
@@ -113,12 +119,12 @@
         </thead>
         <tbody id="bodyClasificacion"></tbody>
       </table>
-      <button id="btnResetClasificacion" class="btn btn-danger btn-small">Resetear clasificaci&oacute;n</button>
+      <button id="btnResetClasificacion" class="btn btn-danger btn-small">Reiniciar classificaci&oacute;</button>
     </div>
 
     <!-- TAB 3: CONFIGURACIÓN -->
     <div id="tabConfig" class="tab-content oculto">
-      <h2>Configuraci&oacute;n</h2>
+      <h2>Configuraci&oacute;</h2>
 
       <div class="config-grupo">
         <label>Descans cada</label>
@@ -143,18 +149,18 @@
       </div>
 
       <div class="config-grupo">
-        <label>Velocidad</label>
+        <label>Velocitat</label>
         <select id="selectVelocidad">
-          <option value="3000">Muy lento</option>
-          <option value="2000">Lento</option>
+          <option value="3000">Molt lent</option>
+          <option value="2000">Lent</option>
           <option value="1200" selected>Normal</option>
-          <option value="800">R&aacute;pida</option>
+          <option value="800">R&agrave;pid</option>
           <option value="500">Turbo</option>
         </select>
       </div>
 
       <div class="config-grupo">
-        <label>Tonter&iacute;as</label>
+        <label>Ximpleries</label>
         <select id="selectTonterias">
           <option value="sin" selected>No</option>
           <option value="si">S&iacute;</option>
@@ -180,7 +186,7 @@
       </div>
 
       <div class="config-grupo">
-        <label>Saldo inicial</label>
+        <label>Saldo Inicial</label>
         <div class="config-puntos">
           <button class="btn btn-small" data-config="saldoInicial" data-dir="-10">-</button>
           <span id="saldoInicialVal">100</span>
@@ -212,15 +218,15 @@
       </div>
 
       <div class="config-grupo config-grupo-vertical">
-        <label>Jugadores</label>
+        <label>Jugadors</label>
         <div id="configJugadores"></div>
         <div class="input-group">
-          <input type="text" id="inputAddJugadorConfig" placeholder="Nuevo jugador" maxlength="20">
+          <input type="text" id="inputAddJugadorConfig" placeholder="Nou jugador" maxlength="20">
           <button id="btnAddJugadorConfig" class="btn btn-small btn-primary">+</button>
         </div>
       </div>
 
-      <button id="btnBorrarDatos" class="btn btn-danger">Borrar todos los datos</button>
+      <button id="btnBorrarDatos" class="btn btn-danger">Esborrar totes les dades</button>
     </div>
 
     <!-- Modal selección jugador -->
@@ -230,7 +236,7 @@
         <div id="modalJugadores"></div>
         <div class="modal-botones">
           <button id="modalConfirmar" class="btn btn-primary" disabled>Confirmar</button>
-          <button id="modalCancelar" class="btn btn-secondary">Cancelar</button>
+          <button id="modalCancelar" class="btn btn-secondary">Cancel&middot;lar</button>
         </div>
       </div>
     </div>
