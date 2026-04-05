@@ -221,9 +221,14 @@ function desbloquearAudio() {
   src.connect(audioCtx.destination);
   src.start(0);
   if (audioCtx.state === 'suspended') audioCtx.resume();
-  // Desbloquear l'element Audio reutilitzable amb un mp3 buit inline
-  audioElement.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwBHAAAAAAD/+1DEAAAHAAGf9AAAIgAAM/8AAABMA0ygAAADSCzGIcxMLPEBM7A+cY0y0GqFwjBmKOeeECYSC+Y2G0Y0DkZ0ISYYBIMhJQEg1FNIqHnMGS0V5VSr/U3f/rX/6lf//Xd3qbv6mqu//9TVf//6mr+hERf/9T/////6n///U1NTVNTU1NTVNTU1NTf/7UsQAg8AAAaQAAAAgAAA0gAAABE1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NQ==';
-  audioElement.play().then(() => { audioElement.pause(); audioElement.currentTime = 0; }).catch(() => {});
+  // Desbloquear l'element Audio reutilitzable (iOS requereix play() dins gest d'usuari)
+  audioElement.muted = true;
+  audioElement.src = `audio/voz1/1.mp3`;
+  audioElement.play().then(() => {
+    audioElement.pause();
+    audioElement.currentTime = 0;
+    audioElement.muted = false;
+  }).catch(() => { audioElement.muted = false; });
   // Inicialitzar speechSynthesis
   if (window.speechSynthesis) {
     const u = new SpeechSynthesisUtterance('');
