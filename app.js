@@ -19,7 +19,7 @@ const TONTERIAS = {
   numeros: [22, 26, 44, 57, 61, 85, 90],
 
   // Sonen 1 cop per partida, en moments aleatoris
-  aleatorios_1_vez: ['callate', 'me_aburro', 'mima_va_que_me_aburro', 'pedo'],
+  aleatorios_1_vez: ['callate', 'donde_esta_la_pelotita', 'me_aburro', 'mima_va_que_me_aburro', 'pedo'],
 
   // Sonen 2 cops per partida, en moments aleatoris
   aleatorio_2_veces: ['miguel_callate'],
@@ -64,6 +64,11 @@ let state = {
 
 let timer = null;
 let audioDesbloqueado = false;
+
+// Audio reutilitzable per iOS - un únic element desbloquejat amb gest d'usuari
+const audioElement = new Audio();
+audioElement.setAttribute('playsinline', '');
+let audioCtx = null;
 
 // --- Elementos DOM ---
 const $ = id => document.getElementById(id);
@@ -206,14 +211,18 @@ function restaurarTablero() {
 // --- Audio ---
 function desbloquearAudio() {
   if (audioDesbloqueado) return;
-  // Crear y reproducir un audio silencioso para desbloquear en móvil
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const buf = ctx.createBuffer(1, 1, 22050);
-  const src = ctx.createBufferSource();
+  // Desbloquear AudioContext
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const buf = audioCtx.createBuffer(1, 1, 22050);
+  const src = audioCtx.createBufferSource();
   src.buffer = buf;
-  src.connect(ctx.destination);
+  src.connect(audioCtx.destination);
   src.start(0);
-  // También inicializar speechSynthesis
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  // Desbloquear l'element Audio reutilitzable amb un mp3 buit inline
+  audioElement.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwBHAAAAAAD/+1DEAAAHAAGf9AAAIgAAM/8AAABMA0ygAAADSCzGIcxMLPEBM7A+cY0y0GqFwjBmKOeeECYSC+Y2G0Y0DkZ0ISYYBIMhJQEg1FNIqHnMGS0V5VSr/U3f/rX/6lf//Xd3qbv6mqu//9TVf//6mr+hERf/9T/////6n///U1NTVNTU1NTVNTU1NTf/7UsQAg8AAAaQAAAAgAAA0gAAABE1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NQ==';
+  audioElement.play().then(() => { audioElement.pause(); audioElement.currentTime = 0; }).catch(() => {});
+  // Inicialitzar speechSynthesis
   if (window.speechSynthesis) {
     const u = new SpeechSynthesisUtterance('');
     u.volume = 0;
@@ -236,10 +245,7 @@ function hablarNumero(num) {
       u.onerror = resolve;
       speechSynthesis.speak(u);
     } else {
-      const audio = new Audio(`audio/${state.voz}/${num}.mp3`);
-      audio.onended = resolve;
-      audio.onerror = resolve;
-      audio.play().catch(resolve);
+      playAudio(`audio/${state.voz}/${num}.mp3`).then(resolve);
     }
   });
 }
@@ -268,10 +274,7 @@ function hablarLinea() {
     if (state.voz === 'default') {
       hablarTexto('Jugamos para Bingo!').then(resolve);
     } else {
-      const audio = new Audio(`audio/${state.voz}/linia.mp3`);
-      audio.onended = resolve;
-      audio.onerror = resolve;
-      audio.play().catch(resolve);
+      playAudio(`audio/${state.voz}/linia.mp3`).then(resolve);
     }
   });
 }
@@ -281,17 +284,15 @@ function hablarBingo() {
     if (state.voz === 'default') {
       hablarTexto('Bingo!').then(resolve);
     } else {
-      const audio = new Audio(`audio/${state.voz}/bingo.mp3`);
-      audio.onended = resolve;
-      audio.onerror = resolve;
-      audio.play().catch(resolve);
+      playAudio(`audio/${state.voz}/bingo.mp3`).then(resolve);
     }
   });
 }
 
 function reproducirDescans() {
   return new Promise(resolve => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') ctx.resume();
     const duration = state.descansDurada;
     const sr = ctx.sampleRate;
     const len = Math.floor(sr * duration);
@@ -358,7 +359,7 @@ function reproducirDescans() {
     bp.connect(gain);
     gain.connect(ctx.destination);
 
-    source.onended = () => { ctx.close(); resolve(); };
+    source.onended = () => { if (ctx !== audioCtx) ctx.close(); resolve(); };
     source.start(0);
   });
 }
@@ -372,10 +373,11 @@ function resetTonterias() {
 
 function playAudio(src) {
   return new Promise(resolve => {
-    const audio = new Audio(src);
-    audio.onended = resolve;
-    audio.onerror = resolve;
-    audio.play().catch(resolve);
+    audioElement.onended = () => { audioElement.onended = null; audioElement.onerror = null; resolve(); };
+    audioElement.onerror = () => { audioElement.onended = null; audioElement.onerror = null; resolve(); };
+    audioElement.src = src;
+    audioElement.currentTime = 0;
+    audioElement.play().catch(resolve);
   });
 }
 
@@ -660,12 +662,7 @@ async function iniciarJuego() {
     if (state.voz === 'default') {
       await hablarTexto('Empezamos la partida');
     } else {
-      await new Promise(resolve => {
-        const audio = new Audio(`audio/${state.voz}/inicio.mp3`);
-        audio.onended = resolve;
-        audio.onerror = resolve;
-        audio.play().catch(resolve);
-      });
+      await playAudio(`audio/${state.voz}/inicio.mp3`);
     }
   }
 
@@ -823,6 +820,15 @@ function confirmarCompra() {
 
 // --- Eventos ---
 function initEventos() {
+  // Desbloquejar àudio amb el primer toc/clic (iOS ho requereix)
+  const desbloquearAlToc = () => {
+    desbloquearAudio();
+    document.removeEventListener('touchstart', desbloquearAlToc);
+    document.removeEventListener('click', desbloquearAlToc);
+  };
+  document.addEventListener('touchstart', desbloquearAlToc, { once: true });
+  document.addEventListener('click', desbloquearAlToc, { once: true });
+
   // Tabs
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => cambiarTab(tab.dataset.tab));
