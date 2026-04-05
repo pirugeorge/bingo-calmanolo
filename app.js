@@ -45,10 +45,10 @@ let state = {
   pausado: false,
   voz: 'default',
   velocidad: 1200,
-  tonterias: 'sin',
+  tonterias: 'si',
   // Descans
   descansEach: 15,     // cada X boles (0 = desactivat)
-  descansDurada: 3,    // segons de mescla
+  descansDurada: 5,    // segons de barreja
   // Punts
   puntosLinea: 1,
   puntosBingo: 3,
@@ -59,7 +59,7 @@ let state = {
   potActual: 0,       // pot de la partida en curs
   jugadores: [],
   partidaEnCurso: false,
-  tema: null
+  tema: 'claro'
 };
 
 let timer = null;
